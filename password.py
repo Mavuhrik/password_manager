@@ -1,5 +1,6 @@
 import pyperclip
 from storage import save_credentials, load_credentials
+from crypto_utils import encrypt_password, decrypt_password
 
 def add_password():
     website = input("Enter website name: ").lower()
@@ -8,11 +9,12 @@ def add_password():
     strength = password_strength(password)
     if strength == "weak":
         print("Website password is weak.you should consider changing it.")
+    encrypted_password = encrypt_password(password)
 
     credentials = {
         "website":website,
         "username":username,
-        "password":password
+        "password":encrypted_password
     }
     credentials_data = load_credentials()
     credentials_data.append(credentials)
@@ -35,12 +37,13 @@ def view_password():
     if not credentials_data:
         print("You don't have any saved password.")
         return
-    passwords = credentials_data
-    if not passwords:
-        return None
     
-    for i, credentials in enumerate(passwords, start=1):
-        masked_password = "*" * len(credentials["password"])
+    for i, credentials in enumerate(credentials_data, start=1):
+        decrypted_password = decrypt_password(credentials["password"])
+        if decrypted_password is None:
+            print(f"Could not decrypt password for {credentials['website']}")
+            continue
+        masked_password = "*" * len(decrypted_password)
         print(f"{i}.Website - {credentials['website']} | Username - {credentials['username']} | Password - {masked_password}\n")
     while True:
         reveal = input("Would you like to reveal password(y/n): ").strip().lower()
@@ -53,15 +56,16 @@ def view_password():
             except ValueError:
                 print("Enter numbers only")
                 continue
-            if not 1 <= choice <= len(passwords):
+            if not 1 <= choice <= len(credentials_data):
                 print("Invalid choice.")
                 continue
-            selected = passwords[choice - 1]
-            print(f"Website - {selected['website']}\n Username - {selected['username']}\n Password - {selected['password']}\n")
+            selected = credentials_data[choice - 1]
+            decrypted_password = decrypt_password(selected["password"])
+            print(f"Website - {selected['website']}\n Username - {selected['username']}\n Password - {decrypted_password}\n")
             break
         if reveal == 'n':
             break
-
+ 
 def update_password():
     credentials_data = load_credentials()
     if not credentials_data:
@@ -70,8 +74,9 @@ def update_password():
     website_name = input("Enter website name: ")
 
     selected = select_password(website_name, credentials_data)
-    if selected:   
-        print(f"Website - {selected['website']}\n Username - {selected['username']}\n Password - {selected['password']}\n")
+    if selected:
+        decrypted_password = decrypt_password(selected["password"])
+        print(f"Website - {selected['website']}\n Username - {selected['username']}\n Password - {decrypted_password}\n")
 
         new_username = input("Enter new username(leave blank to keep current username): ")
         new_password = input("Enter new password(leave blank to keep current password): ")
@@ -79,7 +84,8 @@ def update_password():
         if new_username:
             selected["username"] = new_username
         if new_password:
-            selected["password"] = new_password
+            encrypted_password = encrypt_password(new_password)
+            selected["password"] = encrypted_password
 
         save_credentials(credentials_data)
         print("Password updated successfully")
@@ -135,14 +141,15 @@ def search_password():
         return
     selected = select_password(website_name, credentials_data)
     if selected:
-        print(f"Website: {selected['website']}\n Username: {selected['username']}\n Password: {selected['password']}")
+        decrypted_password = decrypt_password(selected["password"])
+        print(f"Website: {selected['website']}\n Username: {selected['username']}\n Password: {decrypted_password}")
         while True:
             copy = input("Copy password to clipboard.(Y/N): ").strip().lower()
             if copy not in ('y', 'n'):
                 print("Invalid input.Enter y or n")
                 continue
             if copy == "y":
-                pyperclip.copy(selected['password'])
+                pyperclip.copy(decrypted_password)
                 print("Password copied to clipboard.")
                 return
             if copy == "n":

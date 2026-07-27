@@ -1,11 +1,11 @@
-
+from getpass import getpass
 from storage import load_master_password, save_master_password
 from utils import hash_password, verify_password
 
 def setup_master_password():
-    password = input("Enter your master password: ")
+    password = getpass("Enter your master password: ")
 
-    confirm_password = input("Confirm master password: ")
+    confirm_password = getpass("Confirm master password: ")
     if confirm_password != password:
         print("Passwords do not match")
         return False
@@ -26,7 +26,7 @@ def login():
            if setup_master_password():
               return True
         else:
-            enter_password = input("Master password: ")
+            enter_password = getpass("Master password: ")
             if verify_password(enter_password, access):
                 print("Log in successful")
                 return True
